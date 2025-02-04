@@ -1,2 +1,2 @@
 # Border-protected-areas
-Original code for "Inadequate protection of international boundaries highlights an urgent need for transboundary conservation"
+Original code for "Global patterns of border protected areas reveal gaps in transboundary conservation efforts"
