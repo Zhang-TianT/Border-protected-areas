@@ -3,12 +3,12 @@ setwd("D:/chapter1")
 library(sf)
 library(dplyr)
 
-# 1 Border level conservation extent ####
+# 1 Border level protection ####
 
-load("./input/boundaries_cwn2024.RData")
-load("./Revision 1/middle/all_country_1km2024.RData")
+load("D:/chapter1/input/boundaries_cwn2024.RData")
+load("./Revision 1/middle/all_country_1km2024.RData") # all_country_1km
 
-# For each border, calculate the protection on each side of it.
+#for each border, calculate the protection on each side of it.
 
 border_length<-data.frame(borderID=numeric(),
                           ISO3_pair=character(),
@@ -16,6 +16,9 @@ border_length<-data.frame(borderID=numeric(),
                           country=character(),
                           protectedLength=numeric()
 )
+
+head(boundaries)
+class(boundaries)
 
 for (i in 1:nrow(boundaries)) {
   
@@ -78,8 +81,8 @@ head(country_length)
 
 load("./Revision 1/middle/all_country_1km2024.RData") #all_country_1km
 
-boundaries_sr <- boundaries%>%
-  st_transform(crs = "+proj=moll") # each country-pair
+boundaries_sr <- boundaries %>%
+  st_transform(crs = "+proj=moll") #each line presents a pair of neighboring countries
 
 boundaries1<-boundaries
 boundaries2<-boundaries
@@ -87,10 +90,10 @@ soc_pair<-strsplit(boundaries$SOCpair,"_")
 boundaries1$country<-sapply(soc_pair,function(x){x[1]})
 boundaries2$country<-sapply(soc_pair,"[",2)
 
-boundaries_cp <- rbind(boundaries1[,c("borderID","country")],boundaries2[,c("borderID","country")])%>%
+boundaries_cp<-rbind(boundaries1[,c("borderID","country")],boundaries2[,c("borderID","country")])%>%
   st_transform(crs = "+proj=moll") %>%
-  group_by(country)%>%
-  summarise() # each country
+  group_by(country) %>%
+  summarise() #one line for one country
 
 ### Mammal----
 
@@ -98,7 +101,7 @@ mammal <- read_sf("D:/data/IUCN/MAMMALS/MAMMALS.shp") %>%
   filter(presence %in% c(1,2,3),origin %in% c(1,2,6),terrestria=="true") %>%#presence:1 extant, 2 probably extant, 3 possibly extant
   st_transform(crs = "+proj=moll")
 
-# for each country: cross-border species richness + threatened species richness 
+#transboundary species richness + threatened species richness of each country
 
 trans_mammal<-data.frame(country=character(),
                          mammal_sr=numeric(),
@@ -106,7 +109,7 @@ trans_mammal<-data.frame(country=character(),
 )
 
 
-for (i in 1:nrow(boundaries_cp)) {
+for (i in 1:nrow(boundaries_cp)) { # each line present one country
   
   boundaries_cp.i<-boundaries_cp[i,]
   inter_mammal<-st_intersects(boundaries_cp.i,mammal, sparse = T)
@@ -127,14 +130,13 @@ for (i in 1:nrow(boundaries_cp)) {
     trans_mammal[nrow(trans_mammal),"thr_mammal_sr"]=0
     
   }
-  
-  
+
   cat(i,"\t")
   
 }
 
 save(trans_mammal,file = "./Revision 1/middle/sr_country_mammal.RData")
-
+rm(mammal)
 
 ### Amphibians----
 
@@ -146,9 +148,9 @@ amphibians<-read_sf("D:/data/IUCN/AMPHIBIANS/AMPHIBIANS_PART2.shp") %>%
   filter(presence%in% c(1,2,3),origin %in% c(1,2,6),terrestria=="true")%>%#presence:1 extant, 2 probably extant, 3 possibly extant
   st_transform(crs = "+proj=moll")%>%
   rbind(amphibians1)
+rm(amphibians1)
 
-
-# cross-border species richness for each country
+#
 
 trans_amphibians<-data.frame(country=character(),
                              amphi_sr=numeric(),
@@ -183,8 +185,7 @@ for (i in 1:nrow(boundaries_cp)) {
 }
 
 save(trans_amphibians,file = "./Revision 1/middle/sr_country_amphibians.RData")
-
-remove(amphibians)
+rm(amphibians)
 gc()
 ### Reptile-----
 
@@ -232,7 +233,6 @@ for (i in 1:nrow(boundaries_cp)) {
 }
 
 save(trans_reptiles,file = "./Revision 1/middle/sr_country_reptiles.RData")
-
 rm(reptiles)
 gc()
 
@@ -248,11 +248,13 @@ colnames(bird.infor) <- bird.infor[1,]
 bird.infor <- bird.infor[-1,]
 bird.infor<-bird.infor[!is.na(bird.infor$SISRecID),]
 
+head(bird.infor)
 bird.infor.thr <- bird.infor %>%
   filter( `2023 IUCN Red List category`%in% c("CR","EN","VU"))
 
 save(bird.infor,bird.infor.thr,file="./middle/conservation_priorities/bird_infor2024.RData")
 load("./middle/conservation_priorities/bird_infor2024.RData")
+
 
 #bird1
 
@@ -260,6 +262,10 @@ bird1 <- read_sf("D:/data/IUCN/Birds/Birds_1.shp") %>%
   filter(presence%in% c(1,2,3),origin %in% c(1,2,6)) %>% #presence:1 extant, 2 probably extant, 3 possibly extant
   st_transform(crs = "+proj=moll") %>%
   dplyr::select(SISID,binomial) # bird.infor$SISRecID==SISID
+
+head(bird1)
+
+#bird.infor[which(bird.infor$SISRecID==22695544),]
 
 trans_bird1<-data.frame(country=character(),
                         bird_list=character()
@@ -489,7 +495,7 @@ save(bird3a,file="./Revision 1/middle/bird_selected/bird3a.RData")
 rm(bird3a)
 gc()
 
-####bird species richness####
+####bird species richness, merge data####
 
 load("./Revision 1/middle/trans_bird1.RData")
 load("./Revision 1/middle/trans_bird1a.RData")
@@ -539,55 +545,6 @@ for (i in 1:170) {
 
 save(trans_birds,file = "./Revision 1/middle/sr_country_birds.RData")
 
-# check:
-# 1.[Scientific name] is for species, not sub sp
-
-#bird name list
-
-for (i in 1:170) {
-    
-    country<-trans_bird1$country[i]
-    birds1<-as.list (strsplit (trans_bird1$bird_list[which(trans_bird1$country==country)], ",") )%>%as.data.frame()
-    birds2<-as.list (strsplit (trans_bird1a$bird_list[which(trans_bird1a$country==country)], ",") )%>%as.data.frame()
-    birds3<-as.list (strsplit (trans_bird2$bird_list[which(trans_bird2$country==country)], ",") )%>%as.data.frame()
-    birds4<-as.list (strsplit (trans_bird2a$bird_list[which(trans_bird2a$country==country)], ",") )%>%as.data.frame()
-    birds5<-as.list (strsplit (trans_bird3$bird_list[which(trans_bird3$country==country)], ",") )%>%as.data.frame()
-    birds6<-as.list (strsplit (trans_bird3a$bird_list[which(trans_bird3a$country==country)], ",") )%>%as.data.frame()
-    
-    colnames(birds1)<-"birds_i_list"
-    colnames(birds2)<-"birds_i_list"
-    colnames(birds3)<-"birds_i_list"
-    colnames(birds4)<-"birds_i_list"
-    colnames(birds5)<-"birds_i_list"
-    colnames(birds6)<-"birds_i_list"
-    
-    birds.i<-birds1%>%
-      rbind(birds2)%>%
-      rbind(birds3)%>%
-      rbind(birds4)%>%
-      rbind(birds5)%>%
-      rbind(birds6)%>%
-      unique()
-    
-    if (i==1) {
-      
-      bird.name.list<-birds.i
-      
-    } else {
-      
-      bird.name.list<-rbind(bird.name.list,birds.i) %>% unique()
-    }
-
-}
-
-
-bird.infor0 <- xlsx::read.xlsx("D:/data/IUCN/Handbook of the Birds of the World and BirdLife International Digital Checklist of the Birds of the World_Version_81.xlsx", 1)
-
-bird.infor0 <- bird.infor0[c(-1),]
-colnames(bird.infor0) <- bird.infor0[1,]
-bird.infor0 <- bird.infor0[-1,]
-bird.no.infor0<-bird.name.list[which(bird.name.list$birds_i_list %in% bird.infor0$`Scientific name`[is.na(bird.infor0$SISRecID)]),]
-
 
 ### [sum]: Species richness ####
 
@@ -629,11 +586,9 @@ head(country_4level.length)
 table(country_4level.length$pri_level)
 
 country_cp<-country_4level.length %>%
-  dplyr::filter(pri_level>0)%>%
+  dplyr::filter(pri_level>0) %>%
   group_by(country) %>%
   summarise(cp123_length=sum(borderlength)) # km
-
-head(country_cp)
 
 ## 2.3 Other variables ####
 
@@ -646,7 +601,7 @@ gov<-read.csv("./input/influential factors/wgidataset_mean.csv",header = T,row.n
 library(sf)
 load("D:/chapter1/input/boundaries_cwn2024.RData")
 
-# border length/ area
+#length of border/area
 library(units)
 
 load("./Revision 1/result/country_protected_length.RData")#border_length, country_length
@@ -658,7 +613,7 @@ cwn_moll <- cwn_moll %>% st_drop_geometry()
 
 country_length_area <- country_length %>%
   filter(!grepl("Z0",country),!grepl("XKO",country),!grepl("XAD",country)) %>%
-  merge(cwn_moll,by.x = "country",by.y = "GID_0") #Z02没有面积
+  merge(cwn_moll,by.x = "country",by.y = "GID_0")
 
 ### 2.3.3 population####
 #population
@@ -677,9 +632,20 @@ popgro<-popgro[,c("Country.Code","X2000","X2001","X2002","X2003","X2004","X2005"
 popgro$popgro_mean<-rowMeans(popgro[,2:21],na.rm=T)
 
 ### 2.3.4  PA coverage####
-### source: wdpa website
+###source: wdpa website
+load("D:/chapter1/input/boundaries_cwn2024.RData")
+
+cwn %>%
+  filter(GID_0=="CHN")%>%
+  st_make_valid() %>% #avoid error: self-intersection
+  st_transform(crs = "+proj=moll") %>%
+  st_union() %>%
+  st_area()
 
 wdpa_cover<-read.csv("./input/influential factors/wdpa_coverage.csv",header = T,row.names = 1)
+
+wdpa_cover%>%
+  filter(country=="CHN")
 
 ### 2.3.5  gdp####
 #2000-2020 mean gdp per capita
@@ -720,12 +686,17 @@ lm.data<-country_length_area %>%
   merge(country_species_richness[,c("country","species_richness","thr_sr")],by.x = "country",by.y = "country",all.x = T) %>%
   merge(country_cp[,c("country","cp123_length")],by.x = "country",by.y = "country",all.x = T)
 
+summary(lm.data$cp123_length)
+
 lm.data$cp123_length[is.na(lm.data$cp123_length)]<-0
 lm.data.complete <- lm.data[complete.cases(lm.data),] 
 
-lm.data.complete$pop_den<-as.numeric(lm.data.complete$pop_mean/lm.data.complete$area_km) #人/km2
-lm.data.complete$border_area<-as.numeric(lm.data.complete$blength/lm.data.complete$area_km) #border-area ratio
-lm.data.complete$cp_pro<-as.numeric(lm.data.complete$cp123_length/lm.data.complete$blength) #cp占边境全长比例
+head(lm.data.complete)
+class(lm.data.complete$area_km)
+
+lm.data.complete$pop_den<-as.numeric(lm.data.complete$pop_mean/lm.data.complete$area_km) # people/km2
+lm.data.complete$border_area<-as.numeric(lm.data.complete$blength/lm.data.complete$area_km) # border-area ratio
+lm.data.complete$cp_pro<-as.numeric(lm.data.complete$cp123_length/lm.data.complete$blength) # proportion of conservation priorities
 lm.data.complete$log_area_km<-log(lm.data.complete$area_km)
 lm.data.complete$log_border_area<-log(lm.data.complete$border_area)
 lm.data.complete$log_pd<-log(lm.data.complete$pop_den)
@@ -737,7 +708,7 @@ data_st<-scale(lm.data.complete[,c("pPro","mean","log_border_area","coverage",
   as.data.frame()
 
 row.names(data_st)<-lm.data.complete$country
-
+head(data_st)
 colnames(data_st)<-c("pPro","Governance","border_area","PACoverage",
                      "GDP","GDPGrowth","pd","PopGrowth","richness","thr_richness","cp_pro","country_area")
 
@@ -747,8 +718,11 @@ load("./2 Revision 1/middle/lm_data.RData")
 #### Spearman’s rank correlation ####
 
 cor1<-as.dist(round(cor(data_st),4))
+cor1
 
 #### linear regression ####
+
+head(data_st)
 
 fit0<-lm(pPro ~ Governance +
           border_area+ 
@@ -774,21 +748,12 @@ fit0<-lm(pPro ~ Governance +
 par(mfrow=c(2,2))
 plot(fit0)
 
-#a. 回归诊断
-
+# regression diagnostics
 library(car)
 
-#Q-Q图
+qqPlot(fit,id.method="identify")# QQ plot
 
-qqPlot(fit,id.method="identify")
-?qqplot
-
-#b. 误差独立性
-#Durbin-watson检验
-
-durbinWatsonTest(fit0)
-
-#p值不显著说明误差项独立
+durbinWatsonTest(fit0)# Durbin-Watson statistics
 
 #c.线性(需要去掉交互项)
 
@@ -804,30 +769,21 @@ fit1<-lm(pPro ~ Governance +
            thr_richness+
            cp_pro,
          data=data_st)
-crPlots(fit1)#偏残差图
 
-#同方差性,“残差与杠杆图”
+crPlots(fit1)
 
-#同方差性
 spreadLevelPlot(fit0)
-
-#多重共线性：
-
-head(data_st_c)
 
 vif(fit0)
 sqrt(vif(fit0))>2
 
 fit<-lm(pPro ~ Governance +
-          #border_area+ 
           country_area +
           PACoverage + 
           PopGrowth+
           GDPGrowth+
-          #GDP+
           pd+
           richness+
-          #thr_richness+
           cp_pro+
           pd:PACoverage+
           GDPGrowth:PACoverage+
@@ -844,12 +800,9 @@ vif(fit)
 
 #model selection
 
-#逐步回归
-
 library(MASS)
 
 stepAIC(fit,direction = "both")
-?stepAIC
 
 #best:
 
@@ -860,7 +813,7 @@ fit.best<-lm(formula = pPro ~ Governance + country_area + PACoverage +
 summary(fit.best)
 
 
-#贡献度
+#contribution
 
 library(relaimpo)
 
@@ -874,7 +827,7 @@ calc.relimp(pPro ~ Governance + country_area + PACoverage +
             
 )
 
-fit.re <- read.table ("clipboard",header=T)#复制前面的结果，从剪切板读取
+fit.re <- read.table ("clipboard",header=T) # read from clipboard
 fit.re
 
 # 4 plot: fig2 ####
@@ -883,16 +836,17 @@ load("D:/chapter1/input/boundaries_cwn2024.RData")
 
 library(ggplot2)
 
-### fig2.1 ####
+###fig2.1 ####
 
 countries_plength<-merge(cwn,country_length,all.x=T,by.x="GID_0",by.y="country")
 glo <- read_sf("D:/chapter1/input/country-boundaries/countries_new1_noATA.shp") %>% filter(GID_0!="ATA")
 countries_plength$pPro_100<-countries_plength$pPro*100
 
+head(countries_plength)
+
 fig2.1<-ggplot()+
   geom_sf(data=glo,color=NA,fill="#E1E1E1")+
   geom_sf(data=countries_plength,color="#333333",aes(fill=pPro_100),size=0.1)+
-  #scale_fill_viridis(option = "plasma",name="Proportion of\nprotection")+
   scale_fill_gradient2(low = "#4B83A6", mid="#F2F2F2",high = "#BF7878",
                        name="Proportion of \nprotection",
                        midpoint = 45,
@@ -910,9 +864,11 @@ fig2.1<-ggplot()+
         legend.key.width = unit(0.18, 'in'),
         legend.key.height = unit(0.1, 'in'),
         axis.text.x = element_text(size=7)) 
-
+fig2.1
 
 ###fig2.2 barplot####
+
+fit.re
 
 fit.re$vatiables<-c("Governance",
                     "Country size",
@@ -932,7 +888,7 @@ fig2.2 <- ggplot(fit.re,aes(x=reorder(vatiables,lmg),y=lmg*100))+
   theme_bw()+
   theme(panel.grid = element_blank(),
         axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 8),
+        axis.title.x = element_text(size = 8), 
         axis.ticks.length.y = unit(-0.15,'cm'),
         axis.ticks.length.x = unit(-0.15,'cm'),
         axis.text.y = element_text(size=7), 
@@ -947,7 +903,6 @@ conf<-confint(fit.best) %>% as.data.frame()
 conf$variable<-row.names(conf)
 conf$estimate<-coefficients(fit.best)
 colnames(conf)<-c("conf.low","conf.high","term","estimate")
-
 
 conf$term<-c("(Intercept)",
              "Governance",
@@ -994,9 +949,9 @@ fig2.3<-GGally::ggcoef(conf[c(2:11),],
         axis.text.x = element_text(size=7),
         axis.text.y = element_blank())+
   xlab("Coefficients")+
-  ylab("")
+  ylab(" ")
 
-fig2 <- ggpubr::ggarrange(fig2.1,                                             
+fig2 <- ggpubr::ggarrange(fig2.1,
                         ggarrange(fig2.2, fig2.3, ncol = 2, labels = c("B", "C"),widths=c(1,0.7)), 
                         nrow = 2, 
                         labels = "A",
@@ -1004,6 +959,7 @@ fig2 <- ggpubr::ggarrange(fig2.1,
                         align="v"
 ) 
 
+ggsave(fig2, file='./3 revision2/result/fig2.tiff', width=6.5, height=6.8,units = "in", dpi = 300)
 ggsave(fig2, file='./3 revision2/Figures/Figure 2.pdf', width=6.5, height=6.8,units = "in", dpi = 300)
 
 #5. sfig5 ####
@@ -1011,6 +967,7 @@ ggsave(fig2, file='./3 revision2/Figures/Figure 2.pdf', width=6.5, height=6.8,un
 library(ggsci)
 library(ggrepel)
 
+head(lm.data.complete)
 lm.data.complete[which(lm.data.complete$pPro==max(lm.data.complete$pPro)),]
 
 sfig5.plot.data<-lm.data.complete[,c("country","pPro","mean","log_border_area","coverage",
@@ -1046,7 +1003,7 @@ sfig5.1 <- ggplot(data=plot.data.con[complete.cases(plot.data.con),],aes(x=cover
               stat = "smooth",
               method = "lm",
               se = TRUE,
-              alpha = 0, 
+              alpha = 0, # or, use fill = NA
               colour = "black",
               linetype = "dotted",
               size = 0.7)+
@@ -1070,7 +1027,7 @@ pointstolabel_gov1<-plot.data.con[complete.cases(plot.data.con),] %>%
   top_n(n=2,wt=mean)
 pointstolabel_gov2<-plot.data.con[complete.cases(plot.data.con),] %>%
   top_n(n=-2,wt=mean)
-pointstolabel_gov<-rbind(pointstolabel1,pointstolabel_gov1,pointstolabel_gov2) %>% unique()#,pointstolabel2
+pointstolabel_gov<-rbind(pointstolabel1,pointstolabel_gov1,pointstolabel_gov2) %>% unique()
 
 sfig5.2 <- ggplot(data=plot.data.con[complete.cases(plot.data.con),],aes(x=mean,y=pPro,color=region))+
   geom_point(shape=20,size=1.5,stroke = 1,alpha=0.7)+
@@ -1099,6 +1056,8 @@ sfig5.2 <- ggplot(data=plot.data.con[complete.cases(plot.data.con),],aes(x=mean,
   scale_y_continuous(limits = c(0, 100))+
   geom_text_repel(aes(label=Country.or.Area),color="gray20",
                   data = subset(plot.data.con,Country.or.Area %in% pointstolabel_gov$Country.or.Area),force = 10,size=2)
+
+sfig5.2
 
 ###sfig5.3 pgr####
 
@@ -1140,6 +1099,7 @@ sfig5.3 <- ggplot(data=plot.data.con[complete.cases(plot.data.con),],aes(x=popgr
   scale_y_continuous(limits = c(0, 100))+
   geom_text_repel(aes(label=Country.or.Area),color="gray20",data = subset(plot.data.con,Country.or.Area %in% pointstolabel_pog$Country.or.Area),force = 10,size=2)
 
+
 #
 ###sfig5.4 pgr:PA coverage####
 
@@ -1157,8 +1117,6 @@ for (i in 1:nrow(data5)) {
   }
   
 }
-
-#x轴为 pa coverage
 
 data5$pgr_class<-factor(data5$pgr_class,levels = c("higher population growth rate","lower population growth rate"))
 
@@ -1204,12 +1162,9 @@ sfig5.4 <- ggplot(data=data5,aes(x=coverage,y=pPro))+
         legend.text=element_text(size=7),
         legend.position=c(0.35,0.92),
         legend.direction="horizontal",
-        #legend.box.margin = margin(t = 1, r = 1, b = 1, l = 1),
-        #legend.position="bottom",
         legend.background = element_rect(color = "black", linetype = "solid", size = 0.1,fill = NA),
-        #legend.background = element_blank(),
-        panel.grid = element_blank(),#去掉刻度线
-        axis.ticks.length.y = unit(-0.15,'cm'),#刻度朝内
+        panel.grid = element_blank(),
+        axis.ticks.length.y = unit(-0.15,'cm'),
         axis.ticks.length.x = unit(-0.15,'cm'),
         axis.title.x = element_text(size = 8),
         axis.title.y = element_text(size = 8),
@@ -1221,6 +1176,11 @@ sfig5.4 <- ggplot(data=data5,aes(x=coverage,y=pPro))+
 
 library(patchwork)
 
+# layout<-'
+# AABBCCDD
+# #EEFFGG#
+# '
+
 layout<-'
 AB
 CD
@@ -1229,4 +1189,5 @@ sfig5 <- sfig5.1+sfig5.2+sfig5.3+sfig5.4 +
   plot_annotation(tag_levels = "A")+
   plot_layout(design = layout)
 
+ggsave(sfig5,filename = "./3 revision2/result/sfig5.tiff",width = 7,height = 7,dpi = 300)
 ggsave(sfig5,filename = "./3 revision2/Figures/Supplementary Figure 5.pdf",width = 7,height = 7,dpi = 300)
